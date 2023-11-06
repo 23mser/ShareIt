@@ -13,6 +13,7 @@ import ru.practicum.shareit.user.service.UserServiceImpl;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -38,10 +39,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto updateItem(ItemDto itemDto, Long itemId, Long userId) {
+        if (itemDto.getName() == null && itemDto.getDescription() == null && itemDto.getAvailable() == null) {
+            throw new NoSuchElementException("Изменения отсутствуют.");
+        }
+
         Item newItem = itemRepository.findItem(itemId)
                 .orElseThrow(() -> new NoSuchElementException("Вещь не найдена."));
 
-        if (!(newItem.getOwner().equals(userId))) {
+        if (!(Objects.equals(newItem.getOwner(), userId))) {
             throw new OwnerItemException("Вещь принадлежит другому пользователю.");
         }
 
