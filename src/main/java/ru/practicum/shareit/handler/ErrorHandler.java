@@ -27,7 +27,7 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         response.put("status", HttpStatus.NOT_FOUND.name());
         response.put("message", ex.getMessage());
 
-        log.error(ex.getMessage());
+        log.error("Error message", ex);
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -42,7 +42,7 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         response.put("status", HttpStatus.FORBIDDEN.name());
         response.put("message", ex.getMessage());
 
-        log.error(ex.getMessage());
+        log.error("Error message", ex);
 
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
@@ -57,7 +57,7 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         response.put("status", HttpStatus.CONFLICT.name());
         response.put("message", ex.getMessage());
 
-        log.error(ex.getMessage());
+        log.error("Error message", ex);
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
@@ -73,7 +73,7 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.name());
         response.put("message", "Непредвиденная ошибка: " + ex.getMessage());
 
-        log.error(ex.getMessage());
+        log.error("Error message", ex);
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
