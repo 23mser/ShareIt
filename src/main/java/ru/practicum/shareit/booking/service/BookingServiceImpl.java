@@ -59,7 +59,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingGetDto changeStatusOfBookingByOwner(Long bookingId, Long userId, boolean approved) {
+    public BookingGetDto updateBookingStatus(Long bookingId, Long userId, boolean approved) {
         userRepository.findById(userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         if (booking.isEmpty()) {

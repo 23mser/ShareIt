@@ -8,7 +8,7 @@ import java.util.List;
 public interface BookingService {
     BookingGetDto createBooking(BookingDto bookingDto, Long userId);
 
-    BookingGetDto changeStatusOfBookingByOwner(Long bookingId, Long userId, boolean approved);
+    BookingGetDto updateBookingStatus(Long bookingId, Long userId, boolean approved);
 
     BookingGetDto getBooking(Long bookingId, Long userId);
 
