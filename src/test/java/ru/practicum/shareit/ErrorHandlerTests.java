@@ -37,7 +37,7 @@ public class ErrorHandlerTests {
 
     @SneakyThrows
     @Test
-    void UserNotFoundExceptionTest() {
+    void userNotFoundExceptionTest() {
         long userId = 10L;
         mockMvc.perform(get("/users/{userId}", userId))
                 .andDo(print())
