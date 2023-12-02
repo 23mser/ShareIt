@@ -9,6 +9,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import ru.practicum.shareit.item.exceptions.CommentException;
 import ru.practicum.shareit.item.exceptions.ItemNotFoundException;
 import ru.practicum.shareit.item.exceptions.OwnerItemException;
+import ru.practicum.shareit.request.exceptions.RequestNotFoundException;
+import ru.practicum.shareit.request.exceptions.RequestValidateException;
 import ru.practicum.shareit.user.exceptions.EmailAlreadyExistException;
 import ru.practicum.shareit.user.exceptions.UserNotFoundException;
 
@@ -82,6 +84,32 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
         response.put("message", e.getMessage());
 
         log.warn("Comment exception: ", e);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(value = RequestNotFoundException.class)
+    public ResponseEntity<Object> handleRequestNotFoundException(final RequestNotFoundException ex) {
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        response.put("status", HttpStatus.NOT_FOUND.name());
+        response.put("message", ex.getMessage());
+
+        log.error(ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(value = RequestValidateException.class)
+    public ResponseEntity<Object> handleRequestValidateException(final RequestValidateException ex) {
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        response.put("status", HttpStatus.BAD_REQUEST.name());
+        response.put("message", ex.getMessage());
+
+        log.error(ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }

@@ -16,4 +16,9 @@ public class BookingGetItemDto {
     private long bookerId;
     private LocalDateTime start;
     private LocalDateTime end;
+
+    public BookingGetItemDto(long id, long bookerId) {
+        this.id = id;
+        this.bookerId = bookerId;
+    }
 }
