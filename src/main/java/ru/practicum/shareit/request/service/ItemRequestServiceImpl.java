@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ItemRequestServiceImpl implements ItemRequestService {
     private final UserRepository userRepository;
     private final ItemRequestRepository itemRequestRepository;
@@ -35,7 +34,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Override
     @Transactional
     public ItemRequestDto createRequest(ItemRequestIncomeDto requestDto, Long userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
+        User user = findUser(userId);
         ItemRequest itemRequest = ItemRequestMapper.toItemRequest(requestDto, user);
         itemRequestRepository.save(itemRequest);
 
@@ -44,8 +43,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
 
     @Override
     public List<ItemRequestLongDto> findUserRequests(Long userId) {
-        userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
-
+        findUser(userId);
         Sort sort = Sort.by(Sort.Direction.DESC, "created");
         List<ItemRequest> itemRequests = itemRequestRepository.findAllByRequestorId(userId, sort);
         Map<ItemRequest, List<Item>> itemsByRequests = itemRepository.findAllByRequestId(itemRequests)
@@ -56,13 +54,8 @@ public class ItemRequestServiceImpl implements ItemRequestService {
 
     @Override
     public List<ItemRequestLongDto> findAllRequests(int from, int size, Long userId) {
-        userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
-        if (from < 0 || size <= 0) {
-            throw new RequestValidateException("Ошибка пагинации.");
-        }
-
-        Pageable pageable = PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "created"));
-        List<ItemRequest> itemRequests = itemRequestRepository.findAllForeign(userId, pageable).toList();
+        findUser(userId);
+        List<ItemRequest> itemRequests = itemRequestRepository.findAllForeign(userId, pagination(from, size)).toList();
         Map<ItemRequest, List<Item>> itemsByRequests = itemRepository.findAllByRequestId(itemRequests)
                 .stream().collect(Collectors.groupingBy(Item::getItemRequest, Collectors.toList()));
 
@@ -71,10 +64,21 @@ public class ItemRequestServiceImpl implements ItemRequestService {
 
     @Override
     public ItemRequestLongDto findRequestById(Long requestId, Long userId) {
-        userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
+        findUser(userId);
         ItemRequest itemRequest = itemRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RequestNotFoundException("Запрос не найден."));
         List<Item> itemsByRequest = itemRepository.findAllByItemRequest(itemRequest);
         return ItemRequestMapper.toItemRequestDtoForOwner(itemRequest, itemsByRequest);
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
+    }
+
+    private Pageable pagination(int from, int size) {
+        if (from < 0 || size <= 0) {
+            throw new RequestValidateException("Ошибка пагинации.");
+        }
+        return PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "created"));
     }
 }

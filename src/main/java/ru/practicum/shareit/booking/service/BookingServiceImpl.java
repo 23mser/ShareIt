@@ -43,10 +43,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingGetDto createBooking(BookingDto bookingDto, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
-        Item item = itemRepository.findById(bookingDto.getItemId())
-                .orElseThrow(() -> new ItemNotFoundException("Вещь не найдена"));
+        User user = findUser(userId);
+        Item item = itemRepository.findById(bookingDto.getItemId()).orElseThrow(() -> new ItemNotFoundException("Вещь не найдена"));
         if (bookingDto.getStart() == null || bookingDto.getEnd() == null) {
             throw new BookingCreateException("Ошибка создания бронирования.");
         }
@@ -64,7 +62,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingGetDto updateBookingStatus(Long bookingId, Long userId, boolean approved) {
-        userRepository.findById(userId);
+        findUser(userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         if (booking.isEmpty()) {
             throw new BookingNotFoundException("Бронирование не найдено.");
@@ -84,9 +82,8 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    @Transactional
     public BookingGetDto findBooking(Long bookingId, Long userId) {
-        userRepository.findById(userId).orElseThrow();
+        findUser(userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         if (booking.isEmpty()) {
             throw new BookingNotFoundException("Бронирование не найдено.");
@@ -98,21 +95,44 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    @Transactional
     public List<BookingGetDto> findAllBookingsByUser(int from, int size, Long userId, String state) {
-        userRepository.findById(userId).orElseThrow();
+        findUser(userId);
         BookingState bookingState;
-        if (from < 0 || size <= 0) {
-            throw new RequestValidateException("Ошибка пагинации.");
-        }
-        Pageable pageable = PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "start"));
         try {
             bookingState = BookingState.valueOf(BookingState.class, state);
         } catch (Exception e) {
             throw new BookingStateException(state);
         }
-        List<Booking> bookingList = new ArrayList<>();
+        return filterByBookingStateForUser(from, size, userId, bookingState)
+                .stream().map(BookingMapper::toBookingGetDto).collect(Collectors.toList());
+    }
 
+    @Override
+    public List<BookingGetDto> findAllBookingsByOwner(int from, int size, Long userId, String state) {
+        findUser(userId);
+        BookingState bookingState;
+        try {
+            bookingState = BookingState.valueOf(BookingState.class, state);
+        } catch (IllegalArgumentException e) {
+            throw new WrongStateException(state);
+        }
+        if (itemRepository.findAllByOwnerId(userId).isEmpty()) {
+            throw new ItemNotFoundException("Вещей не найдено.");
+        }
+        return filterByBookingStateForOwner(from, size, userId, bookingState)
+                .stream().map(BookingMapper::toBookingGetDto).collect(Collectors.toList());
+    }
+
+    private Pageable pagination(int from, int size) {
+        if (from < 0 || size <= 0) {
+            throw new RequestValidateException("Ошибка пагинации.");
+        }
+        return PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "start"));
+    }
+
+    private List<Booking> filterByBookingStateForUser(int from, int size, Long userId, BookingState bookingState) {
+        List<Booking> bookingList = new ArrayList<>();
+        Pageable pageable = pagination(from, size);
         switch (bookingState) {
             case ALL:
                 bookingList = bookingRepository.findByBookerIdOrderByStartDesc(userId, pageable);
@@ -133,30 +153,12 @@ public class BookingServiceImpl implements BookingService {
                 bookingList = bookingRepository.findByBookerIdAndStatus(userId, BookingStatus.REJECTED, pageable);
                 break;
         }
-        return bookingList.stream().map(BookingMapper::toBookingGetDto)
-                .collect(Collectors.toList());
+        return bookingList;
     }
 
-    @Override
-    @Transactional
-    public List<BookingGetDto> findAllBookingsByOwner(int from, int size, Long userId, String state) {
-        userRepository.findById(userId).orElseThrow();
-        BookingState bookingState;
-        if (from < 0 || size <= 0) {
-            throw new RequestValidateException("Ошибка пагинации.");
-        }
-        Pageable pageable = PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "start"));
-
-        try {
-            bookingState = BookingState.valueOf(BookingState.class, state);
-        } catch (IllegalArgumentException e) {
-            throw new WrongStateException(state);
-        }
-        if (itemRepository.findAllByOwnerId(userId).isEmpty()) {
-            throw new ItemNotFoundException("Вещей не найдено.");
-        }
+    private List<Booking> filterByBookingStateForOwner(int from, int size, Long userId, BookingState bookingState) {
         List<Booking> bookingList = new ArrayList<>();
-
+        Pageable pageable = pagination(from, size);
         switch (bookingState) {
             case ALL:
                 bookingList = bookingRepository.findAllBookingsByOwner(userId, pageable);
@@ -177,6 +179,10 @@ public class BookingServiceImpl implements BookingService {
                 bookingList = bookingRepository.findBookingByItemOwnerAndStatus(userId, BookingStatus.REJECTED, pageable);
                 break;
         }
-        return bookingList.stream().map(BookingMapper::toBookingGetDto).collect(Collectors.toList());
+        return bookingList;
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
     }
 }

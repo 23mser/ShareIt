@@ -55,8 +55,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto findItemById(Long id, Long userId) {
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
+        Item item = itemRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
         List<Comment> comments = commentRepository.findByItemId(id);
 
         if (item.getOwner().getId().equals(userId)) {
@@ -69,8 +68,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto updateItem(ItemDto itemDto, Long id, Long userId) {
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
+        Item item = itemRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
 
         if (!Objects.equals(item.getOwner().getId(), userId)) {
             throw new OwnerItemException("Владелец вещи не найден.");
@@ -95,16 +93,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> findAllItemsOfUser(Long userId, int from, int size) {
-        if (from < 0 || size <= 0) {
-            throw new RequestValidateException("Ошибка пагинации.");
-        }
-        Pageable pageable = PageRequest.of(
-                from == 0 ? 0 : (from / size),
-                size
-        );
         User user = userService.getUserById(userId);
 
-        List<Item> items = itemRepository.findAllByOwnerId(user.getId(), pageable);
+        List<Item> items = itemRepository.findAllByOwnerId(user.getId(), pagination(from, size));
         List<ItemDto> itemsDto = new ArrayList<>();
         mapItemDtoList(itemsDto, items, userId);
 
@@ -138,6 +129,22 @@ public class ItemServiceImpl implements ItemService {
         return itemRepository.searchItemsByText(text, pageRequest).stream().map(ItemMapper::toItemDto).collect(Collectors.toList());
     }
 
+    @Override
+    public CommentDto createComment(CommentDto commentDto, Long itemId, Long userId) {
+        if (commentDto.getText().isBlank()) {
+            throw new CommentException("Ошибка комментария.");
+        }
+        Item item = itemRepository.findById(itemId).orElseThrow();
+        User user = userService.getUserById(userId);
+
+        if (!bookingRepository.existsBookingByItemAndBookerAndStatusNotAndStartBefore(item, user, BookingStatus.REJECTED, LocalDateTime.now())) {
+            throw new CommentException("Ошибка комментария.");
+        }
+        Comment comment = CommentMapper.toComment(commentDto, item, user);
+        commentRepository.save(comment);
+        return CommentMapper.toCommentDto(comment);
+    }
+
     private void mapItemDtoList(List<ItemDto> itemsDto, List<Item> items, Long userId) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -162,24 +169,15 @@ public class ItemServiceImpl implements ItemService {
         return ItemMapper.toItemDtoWithBookingAndComments(item, lastBooking, nextBookings.size() > 0 ? nextBookings.get(nextBookings.size() - 1) : null, comments);
     }
 
-    @Override
-    public CommentDto createComment(CommentDto commentDto, Long itemId, Long userId) {
-        if (commentDto.getText().isBlank()) {
-            throw new CommentException("Ошибка комментария.");
-        }
-        Item item = itemRepository.findById(itemId).orElseThrow();
-        User user = userService.getUserById(userId);
-
-        if (!bookingRepository.existsBookingByItemAndBookerAndStatusNotAndStartBefore(item, user, BookingStatus.REJECTED, LocalDateTime.now())) {
-            throw new CommentException("Ошибка комментария.");
-        }
-        Comment comment = CommentMapper.toComment(commentDto, item, user);
-        commentRepository.save(comment);
-        return CommentMapper.toCommentDto(comment);
-    }
-
     private ItemRequest findItemRequestById(Long requestId) {
         return itemRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RequestNotFoundException("Запрос не найден."));
+    }
+
+    private Pageable pagination(int from, int size) {
+        if (from < 0 || size <= 0) {
+            throw new RequestValidateException("Ошибка пагинации.");
+        }
+        return PageRequest.of(from == 0 ? 0 : (from / size), size);
     }
 }
