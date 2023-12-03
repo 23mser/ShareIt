@@ -38,8 +38,19 @@ public class ErrorHandlerTests {
     @SneakyThrows
     @Test
     void userNotFoundExceptionTest() {
-        long userId = 10L;
+        Long userId = 10L;
         mockMvc.perform(get("/users/{userId}", userId))
+                .andDo(print())
+                .andExpect(status().isNotFound());
+    }
+
+    @SneakyThrows
+    @Test
+    void itemNotFoundExceptionTest() {
+        Long itemId = 10L;
+        Long userId = 1L;
+        mockMvc.perform(get("/items/{itemId}", itemId)
+                .header("X-Sharer-User-Id", userId))
                 .andDo(print())
                 .andExpect(status().isNotFound());
     }
@@ -108,5 +119,28 @@ public class ErrorHandlerTests {
                         .accept(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isBadRequest());
+    }
+
+    @SneakyThrows
+    @Test
+    void createRequestValidateExceptionTest() {
+        Long userId = 2L;
+
+        mockMvc.perform(get("/requests/all?from=-1&size=10")
+                        .header("X-Sharer-User-Id", userId))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+    @SneakyThrows
+    @Test
+    void createRequestNotFoundExceptionTest() {
+        Long userId = 1L;
+        Long requestId = 100L;
+
+        mockMvc.perform(get("/requests/{requestId}", requestId)
+                        .header("X-Sharer-User-Id", userId))
+                .andDo(print())
+                .andExpect(status().isNotFound());
     }
 }

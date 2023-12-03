@@ -29,7 +29,7 @@ class UserServiceTests {
 
     @Test
     @Order(0)
-    @Sql(value = { "/test-schema.sql" })
+    @Sql(value = {"/test-schema.sql"})
     void saveUserTest() {
         UserDto userCreateDto = UserDto.builder()
                 .name("user")
