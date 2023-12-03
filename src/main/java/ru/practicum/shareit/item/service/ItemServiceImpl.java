@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
-
     private final ItemRepository itemRepository;
     private final BookingRepository bookingRepository;
     private final UserService userService;
@@ -68,24 +67,21 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto updateItem(ItemDto itemDto, Long id, Long userId) {
-        Item item = itemRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Вещь не найдена."));
 
         if (!Objects.equals(item.getOwner().getId(), userId)) {
             throw new OwnerItemException("Владелец вещи не найден.");
         }
-
         if (itemDto.getName() != null) {
             item.setName(itemDto.getName());
         }
-
         if (itemDto.getDescription() != null) {
             item.setDescription(itemDto.getDescription());
         }
-
         if (itemDto.getAvailable() != null) {
             item.setAvailable(itemDto.getAvailable());
         }
-
         List<Comment> comments = commentRepository.findByItemId(id);
         itemRepository.save(item);
         return ItemMapper.toItemDtoWithComments(item, CommentMapper.toDtoList(comments));
@@ -94,30 +90,10 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<ItemDto> findAllItemsOfUser(Long userId, int from, int size) {
         User user = userService.getUserById(userId);
-
         List<Item> items = itemRepository.findAllByOwnerId(user.getId(), pagination(from, size));
         List<ItemDto> itemsDto = new ArrayList<>();
         mapItemDtoList(itemsDto, items, userId);
-
-        itemsDto.sort((o1, o2) -> {
-            if (o1.getNextBooking() == null && o2.getNextBooking() == null) {
-                return o1.getId().compareTo(o2.getId());
-            }
-            if (o1.getNextBooking() != null && o2.getNextBooking() == null) {
-                return -1;
-            }
-            if (o1.getNextBooking() == null) {
-                return 1;
-            }
-            if (o1.getNextBooking().getStart().isBefore(o2.getNextBooking().getStart())) {
-                return -1;
-            }
-            if (o1.getNextBooking().getStart().isAfter(o2.getNextBooking().getStart())) {
-                return 1;
-            }
-            return 0;
-        });
-        return itemsDto;
+        return sortItemsDtoList(itemsDto);
     }
 
     @Override
@@ -126,7 +102,8 @@ public class ItemServiceImpl implements ItemService {
         if (text == null || text.isBlank()) {
             return Collections.emptyList();
         }
-        return itemRepository.searchItemsByText(text, pageRequest).stream().map(ItemMapper::toItemDto).collect(Collectors.toList());
+        return itemRepository.searchItemsByText(text, pageRequest)
+                .stream().map(ItemMapper::toItemDto).collect(Collectors.toList());
     }
 
     @Override
@@ -179,5 +156,27 @@ public class ItemServiceImpl implements ItemService {
             throw new RequestValidateException("Ошибка пагинации.");
         }
         return PageRequest.of(from == 0 ? 0 : (from / size), size);
+    }
+
+    private List<ItemDto> sortItemsDtoList(List<ItemDto> itemsDto) {
+        itemsDto.sort((o1, o2) -> {
+            if (o1.getNextBooking() == null && o2.getNextBooking() == null) {
+                return o1.getId().compareTo(o2.getId());
+            }
+            if (o1.getNextBooking() != null && o2.getNextBooking() == null) {
+                return -1;
+            }
+            if (o1.getNextBooking() == null) {
+                return 1;
+            }
+            if (o1.getNextBooking().getStart().isBefore(o2.getNextBooking().getStart())) {
+                return -1;
+            }
+            if (o1.getNextBooking().getStart().isAfter(o2.getNextBooking().getStart())) {
+                return 1;
+            }
+            return 0;
+        });
+        return itemsDto;
     }
 }

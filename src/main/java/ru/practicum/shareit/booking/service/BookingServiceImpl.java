@@ -43,8 +43,10 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingGetDto createBooking(BookingDto bookingDto, Long userId) {
-        User user = findUser(userId);
-        Item item = itemRepository.findById(bookingDto.getItemId()).orElseThrow(() -> new ItemNotFoundException("Вещь не найдена"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
+        Item item = itemRepository.findById(bookingDto.getItemId())
+                .orElseThrow(() -> new ItemNotFoundException("Вещь не найдена"));
         if (bookingDto.getStart() == null || bookingDto.getEnd() == null) {
             throw new BookingCreateException("Ошибка создания бронирования.");
         }
@@ -62,7 +64,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public BookingGetDto updateBookingStatus(Long bookingId, Long userId, boolean approved) {
-        findUser(userId);
+        userRepository.findById(userId);
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         if (booking.isEmpty()) {
             throw new BookingNotFoundException("Бронирование не найдено.");
@@ -82,8 +84,9 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public BookingGetDto findBooking(Long bookingId, Long userId) {
-        findUser(userId);
+        userRepository.findById(userId).orElseThrow();
         Optional<Booking> booking = bookingRepository.findById(bookingId);
         if (booking.isEmpty()) {
             throw new BookingNotFoundException("Бронирование не найдено.");
@@ -95,21 +98,23 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
     public List<BookingGetDto> findAllBookingsByUser(int from, int size, Long userId, String state) {
-        findUser(userId);
+        userRepository.findById(userId).orElseThrow();
         BookingState bookingState;
         try {
             bookingState = BookingState.valueOf(BookingState.class, state);
         } catch (Exception e) {
             throw new BookingStateException(state);
         }
-        return filterByBookingStateForUser(from, size, userId, bookingState)
+        return filterByBookingStateForUser(bookingState, userId, pagination(from, size))
                 .stream().map(BookingMapper::toBookingGetDto).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional
     public List<BookingGetDto> findAllBookingsByOwner(int from, int size, Long userId, String state) {
-        findUser(userId);
+        userRepository.findById(userId).orElseThrow();
         BookingState bookingState;
         try {
             bookingState = BookingState.valueOf(BookingState.class, state);
@@ -119,46 +124,12 @@ public class BookingServiceImpl implements BookingService {
         if (itemRepository.findAllByOwnerId(userId).isEmpty()) {
             throw new ItemNotFoundException("Вещей не найдено.");
         }
-        return filterByBookingStateForOwner(from, size, userId, bookingState)
+        return filterByBookingStateForOwner(bookingState, userId, pagination(from, size))
                 .stream().map(BookingMapper::toBookingGetDto).collect(Collectors.toList());
     }
 
-    private Pageable pagination(int from, int size) {
-        if (from < 0 || size <= 0) {
-            throw new RequestValidateException("Ошибка пагинации.");
-        }
-        return PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "start"));
-    }
-
-    private List<Booking> filterByBookingStateForUser(int from, int size, Long userId, BookingState bookingState) {
+    private List<Booking> filterByBookingStateForOwner(BookingState bookingState, Long userId, Pageable pageable) {
         List<Booking> bookingList = new ArrayList<>();
-        Pageable pageable = pagination(from, size);
-        switch (bookingState) {
-            case ALL:
-                bookingList = bookingRepository.findByBookerIdOrderByStartDesc(userId, pageable);
-                break;
-            case PAST:
-                bookingList = bookingRepository.findByBookerIdAndEndIsBefore(userId, LocalDateTime.now(), pageable);
-                break;
-            case FUTURE:
-                bookingList = bookingRepository.findByBookerIdAndStartIsAfter(userId, LocalDateTime.now(), pageable);
-                break;
-            case CURRENT:
-                bookingList = bookingRepository.findByBookerIdCurrent(userId, LocalDateTime.now(), pageable);
-                break;
-            case WAITING:
-                bookingList = bookingRepository.findByBookerIdAndStatus(userId, BookingStatus.WAITING, pageable);
-                break;
-            case REJECTED:
-                bookingList = bookingRepository.findByBookerIdAndStatus(userId, BookingStatus.REJECTED, pageable);
-                break;
-        }
-        return bookingList;
-    }
-
-    private List<Booking> filterByBookingStateForOwner(int from, int size, Long userId, BookingState bookingState) {
-        List<Booking> bookingList = new ArrayList<>();
-        Pageable pageable = pagination(from, size);
         switch (bookingState) {
             case ALL:
                 bookingList = bookingRepository.findAllBookingsByOwner(userId, pageable);
@@ -182,7 +153,35 @@ public class BookingServiceImpl implements BookingService {
         return bookingList;
     }
 
-    private User findUser(Long userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден."));
+    private List<Booking> filterByBookingStateForUser(BookingState bookingState, Long userId, Pageable pageable) {
+        List<Booking> bookingList = new ArrayList<>();
+        switch (bookingState) {
+            case ALL:
+                bookingList = bookingRepository.findByBookerIdOrderByStartDesc(userId, pageable);
+                break;
+            case PAST:
+                bookingList = bookingRepository.findByBookerIdAndEndIsBefore(userId, LocalDateTime.now(), pageable);
+                break;
+            case FUTURE:
+                bookingList = bookingRepository.findByBookerIdAndStartIsAfter(userId, LocalDateTime.now(), pageable);
+                break;
+            case CURRENT:
+                bookingList = bookingRepository.findByBookerIdCurrent(userId, LocalDateTime.now(), pageable);
+                break;
+            case WAITING:
+                bookingList = bookingRepository.findByBookerIdAndStatus(userId, BookingStatus.WAITING, pageable);
+                break;
+            case REJECTED:
+                bookingList = bookingRepository.findByBookerIdAndStatus(userId, BookingStatus.REJECTED, pageable);
+                break;
+        }
+        return bookingList;
+    }
+
+    private Pageable pagination(int from, int size) {
+        if (from < 0 || size <= 0) {
+            throw new RequestValidateException("Ошибка пагинации.");
+        }
+        return PageRequest.of(from == 0 ? 0 : (from / size), size, Sort.by(Sort.Direction.DESC, "start"));
     }
 }

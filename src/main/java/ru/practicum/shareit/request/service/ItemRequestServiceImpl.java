@@ -42,8 +42,10 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     }
 
     @Override
+    @Transactional
     public List<ItemRequestLongDto> findUserRequests(Long userId) {
         findUser(userId);
+
         Sort sort = Sort.by(Sort.Direction.DESC, "created");
         List<ItemRequest> itemRequests = itemRequestRepository.findAllByRequestorId(userId, sort);
         Map<ItemRequest, List<Item>> itemsByRequests = itemRepository.findAllByRequestId(itemRequests)
@@ -53,6 +55,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     }
 
     @Override
+    @Transactional
     public List<ItemRequestLongDto> findAllRequests(int from, int size, Long userId) {
         findUser(userId);
         List<ItemRequest> itemRequests = itemRequestRepository.findAllForeign(userId, pagination(from, size)).toList();
@@ -68,6 +71,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         ItemRequest itemRequest = itemRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RequestNotFoundException("Запрос не найден."));
         List<Item> itemsByRequest = itemRepository.findAllByItemRequest(itemRequest);
+
         return ItemRequestMapper.toItemRequestDtoForOwner(itemRequest, itemsByRequest);
     }
 
