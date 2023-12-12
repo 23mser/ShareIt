@@ -25,15 +25,16 @@ public class ErrorHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleThrowable(Exception e) {
+    public ResponseEntity<Object> handleThrowable(Exception e) {
         log.debug("Непредвиденная ошибка {}", e.getMessage());
-        return new ErrorResponse("Непредвиденная ошибка {}", e.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse("Непредвиденная ошибка", e.getLocalizedMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(BookingStateException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleUnknownBookingException(BookingStateException e) {
+        log.debug("Ошибка бронирования {}", e.getMessage());
         return new ErrorResponse(e.getMessage());
     }
 

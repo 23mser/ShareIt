@@ -3,6 +3,7 @@ package ru.practicum.shareit.client;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -12,6 +13,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 public class BaseClient {
     protected final RestTemplate rest;
 
@@ -20,54 +22,67 @@ public class BaseClient {
     }
 
     protected ResponseEntity<Object> get(String path) {
+        log.debug("Запрос GET без id и параметров.");
         return get(path, null, null);
     }
 
     protected ResponseEntity<Object> get(String path, long userId) {
+        log.debug("Запрос GET с id и без параметров.");
         return get(path, userId, null);
     }
 
     protected ResponseEntity<Object> get(String path, Long userId, @Nullable Map<String, Object> parameters) {
+        log.debug("Запрос GET с id и параметрами.");
         return makeAndSendRequest(HttpMethod.GET, path, userId, parameters, null);
     }
 
     protected ResponseEntity<Object> get(String path, @Nullable Map<String, Object> parameters) {
+        log.debug("Запрос GET с параметрами и без id.");
         return makeAndSendRequest(HttpMethod.GET, path, null, parameters, null);
     }
 
     protected <T> ResponseEntity<Object> post(String path, T body) {
+        log.debug("Запрос POST без id и параметров.");
         return post(path, null, null, body);
     }
 
     protected <T> ResponseEntity<Object> post(String path, long userId, T body) {
+        log.debug("Запрос POST с id и без параметров.");
         return post(path, userId, null, body);
     }
 
     protected <T> ResponseEntity<Object> post(String path, Long userId, @Nullable Map<String, Object> parameters, T body) {
+        log.debug("Запрос POST с id и параметрами.");
         return makeAndSendRequest(HttpMethod.POST, path, userId, parameters, body);
     }
 
     protected <T> ResponseEntity<Object> patch(String path, T body) {
+        log.debug("Запрос PATCH без id и параметров.");
         return patch(path, null, null, body);
     }
 
     protected <T> ResponseEntity<Object> patch(String path, long userId) {
+        log.debug("Запрос PATCH c id, без параметров и тела.");
         return patch(path, userId, null, null);
     }
 
     protected <T> ResponseEntity<Object> patch(String path, long userId, T body) {
+        log.debug("Запрос PATCH с id и без параметров.");
         return patch(path, userId, null, body);
     }
 
     protected <T> ResponseEntity<Object> patch(String path, Long userId, @Nullable Map<String, Object> parameters, T body) {
+        log.debug("Запрос PATCH с id и параметрами.");
         return makeAndSendRequest(HttpMethod.PATCH, path, userId, parameters, body);
     }
 
     protected ResponseEntity<Object> delete(String path) {
+        log.debug("Запрос DELETE без id и параметров.");
         return delete(path, null, null);
     }
 
     protected ResponseEntity<Object> delete(String path, Long userId, @Nullable Map<String, Object> parameters) {
+        log.debug("Запрос DELETE с id и параметрами.");
         return makeAndSendRequest(HttpMethod.DELETE, path, userId, parameters, null);
     }
 
