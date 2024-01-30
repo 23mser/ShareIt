@@ -32,7 +32,7 @@ Ensure you have the following installed on your system:
 
 1. Clone the repository:
 
-   `git clone https://github.com/kirpinev/java-shareit.git`
+   `git clone https://github.com/23mser/ShareIt.git`
 
 2. Change the current directory to the project root:
 
